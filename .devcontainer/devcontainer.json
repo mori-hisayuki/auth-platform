@@ -1,0 +1,45 @@
+{
+  "name": "Auth Platform",
+  "dockerComposeFile": "./compose.yml",
+  "service": "auth_platform",
+  "workspaceFolder": "/home/vscode/develop",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "go.useLanguageServer": true,
+        "go.gopath": "/home/vscode/go",
+        "go.goroot": "/usr/local/go",
+        "go.toolsManagement.autoUpdate": true,
+        "go.lintTool": "golangci-lint",
+        "go.lintOnSave": "package",
+        "go.formatTool": "goimports",
+        "go.testFlags": ["-v"],
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.organizeImports": "explicit"
+        },
+        "[go]": {
+          "editor.defaultFormatter": "golang.go",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+        "[go.mod]": {
+          "editor.defaultFormatter": "golang.go"
+        },
+        "files.trimTrailingWhitespace": false
+      },
+      "extensions": [
+        "golang.go",
+        "EditorConfig.EditorConfig",
+        "eamodio.gitlens",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+        "foxundermoon.shell-format"
+      ]
+    }
+  },
+  "remoteUser": "vscode",
+  "postCreateCommand": "cd app && go mod download || true"
+}

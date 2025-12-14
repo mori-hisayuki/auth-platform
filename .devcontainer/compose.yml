@@ -1,0 +1,72 @@
+# 共通の設定
+x-shared: &shared
+  hostname: localhost
+  init: true
+  environment:
+    - TZ=Asia/Tokyo
+
+services:
+  auth_platform:
+    container_name: $CONTAINER_NAME
+    <<: *shared
+    build:
+      context: ..
+      dockerfile: .devcontainer/go/Dockerfile
+      args:
+        USER_ID: 1000
+        USER_NAME: $USER_NAME
+        GROUP_ID: 1000
+        GROUP_NAME: $USER_NAME
+        WORK_DIR: ${WORK_DIR}
+        GO_VERSION: $GO_VERSION
+    volumes:
+      # ソースコードをマウント
+      - ..:$HOME_DIR/$WORK_DIR:cached
+      # sshの設定はホストの設定をそのまま利用
+      - ~/.ssh:$HOME_DIR/.ssh
+      # bashrcの設定はホストの設定をそのまま利用
+      - ~/.bashrc:$HOME_DIR/.bashrc
+      # VSCode拡張の再DLを防ぐためのキャッシュ
+      - .extensions:$HOME_DIR/.vscode-server/extensions
+      # Go modules cache
+      - go-mod-cache:$HOME_DIR/go/pkg/mod
+    environment:
+      - DATABASE_URL=postgres://auth:password@postgres:5432/auth?sslmode=disable
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: sleep infinity
+
+  postgres:
+    image: postgres:16
+    <<: *shared
+    environment:
+      - TZ=Asia/Tokyo
+      - POSTGRES_DB=auth
+      - POSTGRES_USER=auth
+      - POSTGRES_PASSWORD=password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auth -d auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    <<: *shared
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+  go-mod-cache:
