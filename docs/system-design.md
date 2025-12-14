@@ -62,17 +62,83 @@
 
 ## ライブラリ
 
+### Web Framework: Gin
+
 ```
-Web Framework:  github.com/gin-gonic/gin
-ORM:            gorm.io/gorm
-PostgreSQL:     gorm.io/driver/postgres
-JWT:            github.com/golang-jwt/jwt/v5
-Password Hash:  golang.org/x/crypto/bcrypt
-UUID:           github.com/google/uuid
-Validation:     github.com/go-playground/validator/v10
-Config:         github.com/spf13/viper
-Redis:          github.com/redis/go-redis/v9
+github.com/gin-gonic/gin
 ```
+
+Goで最も広く使われているWebフレームワーク。高速なルーティング、ミドルウェアサポート、JSONバインディングを提供。
+
+### ORM: GORM
+
+```
+gorm.io/gorm
+gorm.io/driver/postgres
+```
+
+GoのデファクトスタンダードORM。マイグレーション、リレーション、トランザクション管理を提供。`driver/postgres`はPostgreSQL用ドライバ。
+
+### JWT: golang-jwt
+
+```
+github.com/golang-jwt/jwt/v5
+```
+
+JWT（JSON Web Token）の生成・検証ライブラリ。RS256（公開鍵暗号）、HS256（共通鍵）両方に対応。v5は最新のメジャーバージョン。
+
+### Password Hash: bcrypt
+
+```
+golang.org/x/crypto/bcrypt
+```
+
+Go公式の拡張パッケージ。パスワードのハッシュ化に業界標準のbcryptアルゴリズムを使用。ソルト生成・検証を内蔵。
+
+### UUID: google/uuid
+
+```
+github.com/google/uuid
+```
+
+Google製のUUID生成ライブラリ。RFC 4122準拠のUUID v4（ランダム）生成に使用。主キーの生成に利用。
+
+### Validation: validator
+
+```
+github.com/go-playground/validator/v10
+```
+
+構造体のバリデーションライブラリ。Ginに組み込まれており、タグベースでメール形式、必須チェック等を定義可能。
+
+### Config: Viper
+
+```
+github.com/spf13/viper
+```
+
+設定管理ライブラリ。環境変数、YAMLファイル、JSONファイルなど複数のソースから設定を読み込める。12-Factor App対応。
+
+### Redis: go-redis
+
+```
+github.com/redis/go-redis/v9
+```
+
+Redis公式クライアント。Refresh Token管理、レートリミット、セッション管理に使用。コネクションプーリング対応。
+
+### 依存関係まとめ
+
+| カテゴリ | ライブラリ | 用途 |
+|---------|-----------|------|
+| Web | gin | HTTPサーバー、ルーティング |
+| ORM | gorm | DB操作、マイグレーション |
+| 認証 | golang-jwt/jwt | アクセストークン発行・検証 |
+| セキュリティ | x/crypto/bcrypt | パスワードハッシュ化 |
+| ID生成 | google/uuid | 主キー生成 |
+| バリデーション | validator | リクエスト検証 |
+| 設定 | viper | 環境変数・設定ファイル読み込み |
+| キャッシュ | go-redis | Refresh Token、レートリミット |
 
 ## インフラ構成
 
@@ -89,59 +155,48 @@ Redis:          github.com/redis/go-redis/v9
 
 ---
 
-### ローカル開発環境（Docker Compose）
+### ローカル開発環境（DevContainer）
 
 **方針：**
 
-- PostgreSQLとRedisをDockerで起動
-- Goアプリはホストで直接実行（ホットリロード対応）
+- VSCode DevContainerで開発環境を統一
+- PostgreSQL、RedisもDevContainer内で起動
+- Go開発ツール（Air, delve等）がプリインストール済み
 - 外部サービスに依存せず、完全にローカルで完結
 
 **構成図：**
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                   Local Machine                         │
+│                   DevContainer                          │
 │                                                         │
 │  ┌────────────────────────────────────────────────┐    │
-│  │  Go App (host)                                  │    │
-│  │  go run / air (hot reload)                      │    │
+│  │  Go開発コンテナ (auth_platform)                  │    │
+│  │  ・Go 1.23.x                                    │    │
+│  │  ・Air (hot reload)                             │    │
+│  │  ・delve (debugger)                             │    │
 │  │  localhost:8080                                 │    │
 │  └────────────────────────────────────────────────┘    │
 │           │                        │                    │
 │           ▼                        ▼                    │
-│  ┌─────────────────────────────────────────────┐       │
-│  │           Docker Compose                     │       │
-│  │  ┌──────────────┐    ┌──────────────┐       │       │
-│  │  │  PostgreSQL  │    │    Redis     │       │       │
-│  │  │  :5432       │    │    :6379     │       │       │
-│  │  └──────────────┘    └──────────────┘       │       │
-│  └─────────────────────────────────────────────┘       │
+│  ┌──────────────┐         ┌──────────────┐             │
+│  │  PostgreSQL  │         │    Redis     │             │
+│  │  :5432       │         │    :6379     │             │
+│  └──────────────┘         └──────────────┘             │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**docker-compose.yaml：**
+**DevContainer構成：**
 
-```yaml
-services:
-  postgres:
-    image: postgres:16
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_DB: auth
-      POSTGRES_USER: auth
-      POSTGRES_PASSWORD: password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-
-volumes:
-  postgres_data:
+```
+.devcontainer/
+├── .env                  # 環境変数
+├── .extensions/          # VSCode拡張キャッシュ
+│   └── .gitignore
+├── compose.yml           # Go開発コンテナ + PostgreSQL + Redis
+├── devcontainer.json     # VSCode設定
+└── go/
+    └── Dockerfile        # Go開発環境
 ```
 
 **開発ツール：**
@@ -149,8 +204,9 @@ volumes:
 | ツール | 用途 |
 |--------|------|
 | Air | Goのホットリロード |
-| psql / pgAdmin | DBクライアント |
-| redis-cli | Redisクライアント |
+| delve | デバッガ |
+| golangci-lint | リンター |
+| psql | PostgreSQLクライアント（コンテナ内蔵） |
 
 ---
 
@@ -207,56 +263,131 @@ timeout: 60s
 concurrency: 80           # 1インスタンスあたりの同時リクエスト数
 ```
 
+## アーキテクチャ
+
+### レイヤードアーキテクチャ + CQRS
+
+本プロジェクトではレイヤードアーキテクチャを採用し、Service層でCQRS（Command Query Responsibility Segregation）パターンを適用する。
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Handler層（API境界）                                        │
+│  dto/ : Request / Response の型定義                         │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Service層（ビジネスロジック）                                │
+│  ├── command/ : 更新系（Create, Update, Delete）            │
+│  └── query/   : 参照系（Get, List）                         │
+└─────────────────────────────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Repository層（データアクセス）                               │
+│  entity/ : DBエンティティ（テーブルと1:1対応）                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 各レイヤーの責務
+
+| レイヤー | ディレクトリ | 責務 |
+|---------|-------------|------|
+| Handler | `handler/` | HTTPリクエスト/レスポンスの処理、バリデーション |
+| DTO | `handler/dto/` | API境界の型定義（Request/Response） |
+| Command | `service/command/` | 更新系ビジネスロジック（副作用あり） |
+| Query | `service/query/` | 参照系ビジネスロジック（副作用なし） |
+| Repository | `repository/` | データベースアクセス |
+| Entity | `repository/entity/` | DBテーブルに対応する構造体 |
+
+### CQRS分離の理由
+
+| 観点 | Command（更新系） | Query（参照系） |
+|------|------------------|----------------|
+| トランザクション | 必要 | 不要なことが多い |
+| キャッシュ | 難しい | しやすい |
+| スケーリング | 書き込みDB | 読み取りレプリカ可 |
+| 処理の複雑さ | バリデーション、整合性確保 | シンプル |
+
+### 型の変換フロー
+
+各レイヤーは独自の型を持ち、レイヤー間で明示的に変換する。
+
+```
+LoginRequest (dto)
+      │
+      ▼ Handler で変換
+service.LoginInput
+      │
+      ▼ Command で処理
+entity.User (repository から取得)
+      │
+      ▼ Handler で変換
+LoginResponse (dto)
+```
+
 ## リポジトリ構成
 
 ```
 auth-platform/
-├── app/                      # Goアプリケーション
+├── app/                          # Goアプリケーション
 │   ├── cmd/
 │   │   └── server/
-│   │       └── main.go
+│   │       └── main.go           # エントリーポイント
 │   ├── internal/
-│   │   ├── handler/          # HTTPハンドラ
+│   │   ├── config/               # 設定
+│   │   │   └── config.go
+│   │   ├── handler/              # HTTPハンドラ
 │   │   │   ├── auth.go
-│   │   │   ├── user.go
-│   │   │   └── tenant.go
-│   │   ├── service/          # ビジネスロジック
-│   │   │   ├── auth.go
-│   │   │   ├── user.go
-│   │   │   └── tenant.go
-│   │   ├── repository/       # DB操作
 │   │   │   ├── user.go
 │   │   │   ├── tenant.go
-│   │   │   └── refresh_token.go
-│   │   ├── model/            # ドメインモデル
+│   │   │   ├── router.go         # ルーティング定義
+│   │   │   └── dto/              # Request/Response
+│   │   │       ├── auth.go
+│   │   │       ├── user.go
+│   │   │       └── tenant.go
+│   │   ├── service/              # ビジネスロジック
+│   │   │   ├── command/          # 更新系
+│   │   │   │   ├── auth.go       # Login, Logout, RefreshToken
+│   │   │   │   ├── user.go       # CreateUser, UpdateUser, DeleteUser
+│   │   │   │   └── tenant.go     # CreateTenant, UpdateTenant
+│   │   │   └── query/            # 参照系
+│   │   │       ├── user.go       # GetUser, ListUsers
+│   │   │       └── tenant.go     # GetTenant, ListTenants
+│   │   ├── repository/           # DB操作
 │   │   │   ├── user.go
 │   │   │   ├── tenant.go
-│   │   │   └── role.go
-│   │   ├── middleware/       # ミドルウェア
-│   │   │   ├── auth.go
-│   │   │   ├── logging.go
-│   │   │   └── ratelimit.go
-│   │   └── config/
-│   │       └── config.go
-│   ├── pkg/
-│   │   └── jwt/              # JWT発行・検証（他サービスでも使える）
+│   │   │   ├── role.go
+│   │   │   ├── refresh_token.go
+│   │   │   └── entity/           # DBエンティティ
+│   │   │       ├── user.go
+│   │   │       ├── tenant.go
+│   │   │       ├── role.go
+│   │   │       └── refresh_token.go
+│   │   └── middleware/           # ミドルウェア
+│   │       ├── auth.go           # JWT検証
+│   │       ├── logging.go
+│   │       └── ratelimit.go
+│   ├── pkg/                      # 外部公開可能なパッケージ
+│   │   └── jwt/                  # JWT発行・検証（他サービスでも使える）
 │   │       └── jwt.go
 │   ├── db/
-│   │   └── migrations/
+│   │   └── migrations/           # DBマイグレーション
 │   ├── api/
-│   │   └── openapi.yaml
+│   │   └── openapi.yaml          # API定義
+│   ├── .air.toml                 # ホットリロード設定
 │   ├── go.mod
+│   ├── go.sum
 │   └── Dockerfile
-├── infra/                    # IaC（後日追加）
+├── infra/                        # IaC（後日追加）
 │   └── terraform/
 │       ├── environments/
 │       │   ├── dev/
 │       │   └── prod/
 │       └── modules/
-├── docs/                     # ドキュメント
+├── docs/                         # ドキュメント
 │   ├── design-principles.md
 │   └── system-design.md
-├── docker-compose.yaml
 └── README.md
 ```
 
@@ -358,20 +489,43 @@ auth-platform/
 
 ## ローカル開発の始め方
 
+### 前提条件
+
+- Docker / Docker Compose
+- VSCode + Dev Containers拡張機能
+
+### セットアップ手順
+
 ```bash
 # 1. リポジトリのクローン
 git clone https://github.com/mori-hisayuki/auth-platform.git
 cd auth-platform
 
-# 2. Docker Composeで依存サービスを起動
-docker-compose up -d
+# 2. VSCodeで開く
+code .
 
-# 3. 依存関係のインストール
+# 3. DevContainerで開く
+#    VSCodeの通知 "Reopen in Container" をクリック
+#    または コマンドパレット → "Dev Containers: Reopen in Container"
+
+# 4. コンテナ内でサーバー起動
 cd app
-go mod download
-
-# 4. サーバー起動（ホットリロード）
 air
 # または
 go run cmd/server/main.go
+```
+
+### 接続情報（DevContainer内）
+
+| サービス | 接続先 |
+|---------|-------|
+| PostgreSQL | postgres:5432 (user: auth, password: password, db: auth) |
+| Redis | redis:6379 |
+| API | http://localhost:8080 |
+
+### 環境変数（自動設定済み）
+
+```
+DATABASE_URL=postgres://auth:password@postgres:5432/auth?sslmode=disable
+REDIS_URL=redis://redis:6379
 ```
